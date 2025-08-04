@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تطبيق توصيل المياه</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#1e40af'
+                    },
+                    borderRadius: {
+                        'none': '0px', 'sm': '4px', DEFAULT: '8px', 'md': '12px', 'lg': '16px', 'xl': '20px', '2xl': '24px', '3xl': '32px', 'full': '9999px', 'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .modal { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .modal.show { display: flex; opacity: 1; }
+        .modal-content { transform: translateY(20px); transition: transform 0.3s ease; }
+        .modal.show .modal-content { transform: translateY(0); }
+        .animate-new-order { animation: newOrderFadeIn 1s ease-out; }
+        @keyframes newOrderFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-white text-gray-900">
+    <div class="w-full max-w-sm mx-auto bg-white min-h-screen relative">
+        <!-- Top Navigation Bar -->
+        <header class="fixed top-0 w-full max-w-sm bg-white border-b border-gray-100 z-50">
+            <div class="flex items-center gap-3 px-4 py-3">
+                <div class="flex-1">
+                    <div class="relative flex items-center">
+                        <i class="ri-search-line absolute right-3 text-gray-400 text-lg"></i>
+                        <input type="search" id="search-input" placeholder="ابحث عن الطلبات..." class="w-full bg-gray-50 text-sm rounded-full py-2 pl-4 pr-10 outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-30 transition-all duration-200">
+                    </div>
+                </div>
+                <!-- Icons Grouped Together -->
+                <div class="flex items-center gap-2">
+                    <button id="logout-btn" class="w-8 h-8 flex items-center justify-center cursor-pointer" title="تسجيل الخروج">
+                        <i class="ri-arrow-left-start-on-rectangle-line text-gray-600 text-xl"></i>
+                    </button>
+                    <button id="install-app-btn" class="w-8 h-8 flex items-center justify-center cursor-pointer hidden" title="تثبيت التطبيق">
+                        <i class="ri-download-2-line text-gray-600 text-lg"></i>
+                    </button>
+                    <button id="enable-notifications-btn" class="w-8 h-8 flex items-center justify-center cursor-pointer" title="تفعيل الإشعارات">
+                        <i class="ri-notification-3-line text-gray-600 text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="pt-20 pb-28 px-4">
+            <div id="orders-container" class="space-y-4 mt-6">
+                <!-- Loading State -->
+                <div id="loading-state" class="text-center py-10">
+                    <i class="ri-loader-4-line ri-spin text-4xl text-primary"></i>
+                    <p class="mt-4 text-gray-600">جاري تحميل الطلبات الجديدة...</p>
+                </div>
+                
+                <!-- الطلب الوهمي المضاف هنا -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 static-order">
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2"><i class="ri-mail-line text-primary text-sm"></i><h3 class="font-medium text-gray-900">طلب مياه (مثال)</h3></div>
+                        <div class="flex items-center justify-between"><div class="flex items-center gap-2"><i class="ri-box-3-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">مياه معدنية 20 لتر</span></div><div class="flex items-center gap-1"><i class="ri-money-dollar-circle-line text-green-600 text-sm"></i><span class="text-sm font-medium text-green-600">45 ريال</span></div></div>
+                        <div class="flex items-center gap-2"><i class="ri-user-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">أحمد محمد العلي</span></div>
+                        <div class="flex items-center gap-2"><i class="ri-map-pin-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">حي الملز، شارع الأمير محمد</span></div>
+                        <div class="space-y-2"><div class="flex items-center gap-2"><i class="ri-global-line text-gray-500 text-sm"></i><a href="#" class="text-sm text-primary hover:underline">عرض الموقع على الخريطة</a></div><div class="w-full h-32 rounded-lg overflow-hidden"><img src="https://readdy.ai/api/search-image?query=modern%20residential%20house%20exterior%2C%20front%20view%2C%20saudi%20arabian%20style%20architecture%2C%20clean%20and%20minimalist%20design%2C%20daytime%2C%20high%20quality%20photorealistic%20render&width=640&height=360&seq=1&orientation=landscape" alt="صورة المنزل" class="w-full h-full object-cover"></div></div>
+                        <div class="flex items-start gap-2"><i class="ri-file-text-line text-gray-500 text-sm mt-0.5"></i><span class="text-sm text-gray-700">يرجى التوصيل للطابق الثاني.</span></div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                        <div class="w-6 h-6 flex items-center justify-center cursor-pointer"><i class="ri-share-line text-gray-500"></i></div>
+                        <div class="flex items-center gap-3"><div class="w-6 h-6 flex items-center justify-center cursor-pointer"><i class="ri-check-line text-green-600"></i></div><div class="w-6 h-6 flex items-center justify-center cursor-pointer"><i class="ri-close-line text-red-500"></i></div></div>
+                        <div class="flex items-center gap-1"><div class="w-2 h-2 bg-green-500 rounded-full"></div><span class="text-xs text-green-600 font-medium">تم الاستلام</span></div>
+                    </div>
+                </div>
+                <!-- Orders from Firebase will be dynamically inserted here -->
+            </div>
+        </main>
+
+        <!-- Bottom Input Bar -->
+        <div class="fixed bottom-0 w-full max-w-sm bg-white border-t border-gray-100 p-3">
+            <div class="flex items-center gap-2 bg-gray-100 rounded-2xl p-2 shadow-sm">
+                <button class="w-9 h-9 flex-shrink-0 flex items-center justify-center cursor-pointer text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
+                    <i class="ri-mic-line text-xl"></i>
+                </button>
+                <input type="text" placeholder="اسأل عن أي شيء..." class="flex-1 bg-transparent border-none outline-none text-sm text-gray-800 placeholder-gray-500 px-2">
+                <button class="w-9 h-9 flex-shrink-0 flex items-center justify-center cursor-pointer bg-gray-200 rounded-lg text-gray-600 hover:bg-gray-300 transition-colors">
+                    <i class="ri-add-line text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Driver Modal -->
+    <div id="assign-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-[60] items-center justify-center p-4">
+        <div class="modal-content bg-white rounded-xl shadow-lg w-full max-w-xs p-5">
+            <h3 class="text-lg font-semibold text-center mb-4 text-gray-800">إسناد الطلب إلى:</h3>
+            <div class="space-y-3"><button id="assign-driver-1" class="w-full text-center p-3 bg-primary text-white rounded-button hover:bg-secondary transition-colors">المندوب الأول</button><button id="assign-driver-2" class="w-full text-center p-3 bg-primary text-white rounded-button hover:bg-secondary transition-colors">الدباب</button></div>
+            <button id="close-modal-btn" class="mt-5 w-full text-sm text-gray-500 py-2 hover:bg-gray-100 rounded-button">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- Notification Sound -->
+    <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-notification-947.mp3" preload="auto"></audio>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- Firebase Configuration ---
+        const firebaseConfig = { apiKey: "AIzaSyA_Eggt7vigwo-xzhnSBKO2FAuDNu4ORdM", authDomain: "salahmhdly.firebaseapp.com", projectId: "salahmhdly", storageBucket: "salahmhdly.firebasestorage.app", messagingSenderId: "354047888934", appId: "1:354047888934:web:f5c4ee49620eaae049a0e7" };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- DOM Elements ---
+        const ordersContainer = document.getElementById('orders-container');
+        const loadingState = document.getElementById('loading-state');
+        const notificationSound = document.getElementById('notification-sound');
+        const assignModal = document.getElementById('assign-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const assignDriver1Btn = document.getElementById('assign-driver-1');
+        const assignDriver2Btn = document.getElementById('assign-driver-2');
+        const logoutBtn = document.getElementById('logout-btn');
+        const searchInput = document.getElementById('search-input');
+
+        let currentOrderId = null;
+        let currentShopId = null;
+
+        // --- Authentication ---
+        auth.onAuthStateChanged(async user => {
+            if (user) {
+                try {
+                    const userDocRef = db.collection('users').where('email', '==', user.email);
+                    const userDocSnapshot = await userDocRef.get();
+                    if (userDocSnapshot.empty) throw new Error(`لا يوجد مستخدم بهذا البريد: ${user.email}.`);
+                    const shopData = userDocSnapshot.docs[0].data();
+                    currentShopId = shopData.shopId;
+                    if (!currentShopId) throw new Error("لم يتم العثور على 'shopId'.");
+                    listenForNewOrders(currentShopId);
+                } catch (error) {
+                    loadingState.innerHTML = `<div class="text-red-600 text-right p-4 bg-red-50 rounded-lg"><h3 class="font-bold">خطأ فني:</h3><p class="mt-2 text-sm">${error.message}</p></div>`;
+                }
+            } else {
+                window.location.href = 'shop-login.html';
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => auth.signOut());
+
+        // --- Order Card Template ---
+        function createOrderCard(orderData, orderId) {
+            const customer = orderData.customerInfo;
+            const totalQuantity = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+            return `
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 animate-new-order" data-order-id="${orderId}">
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2"><i class="ri-mail-line text-primary text-sm"></i><h3 class="font-medium text-gray-900">طلب جديد (${totalQuantity} صنف)</h3></div>
+                    <div class="flex items-center justify-between"><div class="flex items-center gap-2"><i class="ri-box-3-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">${orderData.items.map(i => i.name).join(', ')}</span></div><div class="flex items-center gap-1"><i class="ri-money-dollar-circle-line text-green-600 text-sm"></i><span class="text-sm font-medium text-green-600">${orderData.total.toFixed(2)} ريال</span></div></div>
+                    <div class="flex items-center gap-2"><i class="ri-user-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">${customer.name}</span></div>
+                    <div class="flex items-center gap-2"><i class="ri-map-pin-line text-gray-500 text-sm"></i><span class="text-sm text-gray-700">${customer.address || 'لا يوجد عنوان'}</span></div>
+                    <div class="space-y-2"><div class="flex items-center gap-2"><i class="ri-global-line text-gray-500 text-sm"></i><a href="${customer.location}" target="_blank" class="text-sm text-primary hover:underline">عرض الموقع على الخريطة</a></div></div>
+                    <div class="flex items-start gap-2"><i class="ri-file-text-line text-gray-500 text-sm mt-0.5"></i><span class="text-sm text-gray-700">${customer.details || 'لا توجد ملاحظات'}</span></div>
+                </div>
+                <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                    <div class="w-6 h-6 flex items-center justify-center cursor-pointer share-btn"><i class="ri-share-line text-gray-500"></i></div>
+                    <div class="flex items-center gap-3"><div class="w-6 h-6 flex items-center justify-center cursor-pointer accept-btn"><i class="ri-check-line text-green-600"></i></div><div class="w-6 h-6 flex items-center justify-center cursor-pointer reject-btn"><i class="ri-close-line text-red-500"></i></div></div>
+                    <div class="flex items-center gap-1 status-indicator"><div class="w-2 h-2 bg-blue-500 rounded-full"></div><span class="text-xs text-blue-600 font-medium">طلب جديد</span></div>
+                </div>
+            </div>`;
+        }
+
+        // --- Real-time Order Listener ---
+        function listenForNewOrders(shopId) {
+            db.collection("orders").where("shopId", "==", shopId).where("status", "==", "new").orderBy("createdAt", "desc")
+                .onSnapshot(snapshot => {
+                    if (loadingState) loadingState.style.display = 'none';
+                    snapshot.docChanges().forEach(change => {
+                        const orderId = change.doc.id;
+                        const existingCard = document.querySelector(`[data-order-id="${orderId}"]`);
+                        if (change.type === "added" && !existingCard) {
+                            ordersContainer.insertAdjacentHTML('afterbegin', createOrderCard(change.doc.data(), orderId));
+                            notificationSound.play().catch(e => {});
+                        }
+                        if (change.type === "removed" && existingCard) {
+                            existingCard.remove();
+                        }
+                    });
+                }, error => {
+                    loadingState.innerHTML = `<div class="text-red-600 text-right p-4 bg-red-50 rounded-lg"><h3 class="font-bold">خطأ في الاتصال:</h3><p class="mt-2 text-sm">${error.message}</p></div>`;
+                });
+        }
+
+        // --- Event Delegation for Order Actions ---
+        ordersContainer.addEventListener('click', function(e) {
+            const card = e.target.closest('[data-order-id]');
+            if (!card) return;
+            const orderId = card.dataset.orderId;
+            const statusIndicator = card.querySelector('.status-indicator');
+
+            if (e.target.closest('.share-btn')) {
+                currentOrderId = orderId;
+                assignModal.classList.add('show');
+            }
+            if (e.target.closest('.accept-btn')) {
+                // Here you can add logic to update order status to 'accepted' in Firebase
+                statusIndicator.innerHTML = `<div class="w-2 h-2 bg-green-500 rounded-full"></div><span class="text-xs text-green-600 font-medium">تم القبول</span>`;
+            }
+            if (e.target.closest('.reject-btn')) {
+                // Here you can add logic to update order status to 'rejected' in Firebase
+                statusIndicator.innerHTML = `<div class="w-2 h-2 bg-red-500 rounded-full"></div><span class="text-xs text-red-600 font-medium">تم الرفض</span>`;
+            }
+        });
+
+        // --- Search Functionality ---
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const orderCards = ordersContainer.querySelectorAll('.static-order, [data-order-id]');
+            orderCards.forEach(card => {
+                card.style.display = card.textContent.toLowerCase().includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+
+        // --- Modal Functionality ---
+        function hideModal() {
+            assignModal.classList.remove('show');
+            currentOrderId = null;
+        }
+        closeModalBtn.addEventListener('click', hideModal);
+        assignModal.addEventListener('click', (e) => { if (e.target === assignModal) hideModal(); });
+
+        async function assignOrder(driverName) {
+            if (!currentOrderId) return;
+            const orderIdToUpdate = currentOrderId;
+            hideModal();
+            try {
+                await db.collection('orders').doc(orderIdToUpdate).update({ status: 'assigned', assignedTo: driverName });
+                // The real-time listener will automatically remove the card from the "new" list.
+            } catch (error) {
+                alert("فشل إسناد الطلب. يرجى المحاولة مرة أخرى.");
+            }
+        }
+        assignDriver1Btn.addEventListener('click', () => assignOrder('المندوب الأول'));
+        assignDriver2Btn.addEventListener('click', () => assignOrder('الدباب'));
+
+        // --- PWA & Notifications Code ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+            });
+        }
+        const VAPID_PUBLIC_KEY = "BD4HBvu1AjHWQvy9625d1j82CLtmYl4eIsYLIICEI1Zm9gKr56Ui1tzyFqptRYN_O9UJrRe3PG1ULTjzggV0_Wg";
+        const enableNotificationsBtn = document.getElementById('enable-notifications-btn');
+        async function saveSubscriptionToFirestore(subscription, shopId) { await db.collection("subscriptions").add({ shopId: shopId, subscription: JSON.parse(JSON.stringify(subscription)), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+        async function subscribeUserToPush() {
+            if (!currentShopId) { alert("لا يمكن تفعيل الإشعارات قبل تحميل بيانات المحل."); return; }
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                const existingSubscription = await registration.pushManager.getSubscription();
+                if (existingSubscription) { alert('الإشعارات مفعلة بالفعل.'); return; }
+                const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY });
+                await saveSubscriptionToFirestore(subscription, currentShopId);
+                alert('تم تفعيل الإشعارات بنجاح!');
+            } catch (error) { alert('فشل تفعيل الإشعارات. يرجى السماح بها من إعدادات المتصفح.'); }
+        }
+        enableNotificationsBtn.addEventListener('click', subscribeUserToPush);
+        const installBtn = document.getElementById('install-app-btn');
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden'); });
+        installBtn.addEventListener('click', async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; installBtn.classList.add('hidden'); } });
+        window.addEventListener('appinstalled', () => { installBtn.classList.add('hidden'); deferredPrompt = null; });
+    });
+    </script>
+</body>
+</html>
