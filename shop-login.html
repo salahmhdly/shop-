@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>تسجيل دخول الشركاء</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+
+<!-- ✅ Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+<script>
+    tailwind.config = { theme: { extend: { colors: { primary: '#1E40AF', secondary: '#3B82F6' }, borderRadius: { DEFAULT: '8px', 'md': '12px', 'full': '9999px', 'button': '8px' } } } }
+</script>
+<style>
+    body { font-family: 'Cairo', sans-serif; }
+    input:focus { outline: none; border-color: #1E40AF; box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1); }
+    .input-container { position: relative; }
+    .input-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #9CA3AF; }
+    .password-toggle { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6B7280; }
+    #branchBottomSheet { transition: opacity 0.3s ease; pointer-events: none; }
+    #branchBottomSheet.show { pointer-events: auto; }
+    #bottomSheetContent { transform: translateY(100%); transition: transform 0.3s ease-out; touch-action: none; }
+    #branchBottomSheet.show #bottomSheetContent { transform: translateY(0); }
+    .toast { transform: translateY(20px); opacity: 0; transition: all 0.3s ease-out; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+<div class="w-full max-w-sm mx-auto px-8 py-12">
+<!-- Logo Section -->
+<div class="text-center mb-12">
+    <div class="w-16 h-16 mx-auto mb-6 bg-primary rounded-2xl flex items-center justify-center shadow-lg"><span class="text-white text-xl font-['Pacifico']">logo</span></div>
+    <div class="w-8 h-8 mx-auto mb-4 flex items-center justify-center"><i class="ri-shield-check-line text-primary text-lg"></i></div>
+    <h1 id="loginTitle" class="text-2xl font-bold text-gray-900 mb-2">تسجيل دخول الكاشير</h1>
+    <p id="loginSubtitle" class="text-gray-600 text-base">لوحة تحكم الكاشير</p>
+</div>
+
+<!-- Login Form -->
+<form id="loginForm" class="space-y-6">
+    <div id="nameField" class="hidden"><label class="block text-sm font-medium text-gray-700 mb-2 text-right">الاسم الكامل</label><div class="input-container"><input type="text" id="name" class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-button text-right bg-white text-gray-900 placeholder-gray-500" placeholder="ادخل اسمك الكامل"><div class="input-icon w-5 h-5 flex items-center justify-center"><i class="ri-user-line"></i></div></div></div>
+    <div id="phoneField" class="hidden"><label class="block text-sm font-medium text-gray-700 mb-2 text-right">رقم الجوال</label><div class="input-container"><input type="tel" id="phone" class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-button text-right bg-white text-gray-900 placeholder-gray-500" placeholder="05xxxxxxxx"><div class="input-icon w-5 h-5 flex items-center justify-center"><i class="ri-phone-line"></i></div></div></div>
+    <div id="branchField">
+        <label class="block text-sm font-medium text-gray-700 mb-2 text-right">اختر الفرع *</label>
+        <div class="input-container">
+            <button type="button" id="branchSelector" class="w-full px-4 py-3 pr-4 pl-12 border border-gray-300 rounded-button text-right bg-white text-gray-900 flex justify-between items-center">
+                <span id="selectedBranchText" class="text-gray-500">اختر فرعك</span>
+                <div class="w-5 h-5 flex items-center justify-center absolute left-4 top-1/2 -translate-y-1/2"><i class="ri-arrow-down-s-line"></i></div>
+            </button>
+        </div>
+    </div>
+    <div>
+        <label id="emailLabel" class="block text-sm font-medium text-gray-700 mb-2 text-right">البريد الإلكتروني للمحل *</label>
+        <div class="input-container"><input type="email" id="email" class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-button text-right bg-white text-gray-900 placeholder-gray-500" placeholder="example@shop.com" required><div class="input-icon w-5 h-5 flex items-center justify-center"><i class="ri-mail-line"></i></div></div>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2 text-right">كلمة المرور *</label>
+        <div class="input-container"><input type="password" id="password" class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-button text-right bg-white text-gray-900 placeholder-gray-500" placeholder="••••••••" required><div class="input-icon w-5 h-5 flex items-center justify-center"><i class="ri-lock-line"></i></div><div class="password-toggle w-5 h-5 flex items-center justify-center" id="togglePassword"><i class="ri-eye-line" id="eyeIcon"></i></div></div>
+    </div>
+    <button type="submit" id="submitBtn" class="w-full bg-primary hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-button transition duration-200 cursor-pointer flex items-center justify-center">
+        <span id="btnText">دخول / إنشاء حساب</span>
+        <i id="btnSpinner" class="ri-loader-4-line ri-spin text-xl hidden"></i>
+    </button>
+</form>
+
+<div class="mt-12 text-center">
+    <p class="text-gray-600 text-base">ليس لديك حساب؟ <a href="#" id="joinUsLink" class="text-primary hover:text-blue-700 font-medium cursor-pointer">انضم إلينا</a></p>
+</div>
+</div>
+
+<div id="branchBottomSheet" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+  <div id="bottomSheetContent" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl flex flex-col max-h-[90vh]">
+    <div class="p-4 border-b border-gray-200 flex justify-between items-center"><h3 class="text-lg font-semibold text-gray-900">اختر الفرع</h3><button type="button" id="closeBranchSheet" class="text-gray-500 hover:text-gray-700"><div class="w-6 h-6 flex items-center justify-center"><i class="ri-close-line text-xl"></i></div></button></div>
+    <div class="p-4 overflow-y-auto">
+      <div class="space-y-2">
+        <button type="button" class="branch-option w-full text-right p-4 hover:bg-gray-50 rounded-lg transition-colors duration-200" data-shop-id="baqdah" data-shop-name="باقده">فرع باقده</button>
+        <button type="button" class="branch-option w-full text-right p-4 hover:bg-gray-50 rounded-lg transition-colors duration-200" data-shop-id="albadani" data-shop-name="البدراني">فرع البدراني</button>
+        <button type="button" class="branch-option w-full text-right p-4 hover:bg-gray-50 rounded-lg transition-colors duration-200" data-shop-id="alaziziyah" data-shop-name="العزيزيه">فرع العزيزيه</button>
+        <button type="button" class="branch-option w-full text-right p-4 hover:bg-gray-50 rounded-lg transition-colors duration-200" data-shop-id="alaqour" data-shop-name="العاقور">فرع العاقور</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-notification" class="toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-[80]"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyA_Eggt7vigwo-xzhnSBKO2FAuDNu4ORdM",
+        authDomain: "salahmhdly.firebaseapp.com",
+        projectId: "salahmhdly",
+        storageBucket: "salahmhdly.appspot.com",
+        messagingSenderId: "354047888934",
+        appId: "1:354047888934:web:f5c4ee49620eaae049a0e7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const loginForm = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const toastNotification = document.getElementById('toast-notification');
+    const togglePassword = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const branchSelector = document.getElementById('branchSelector');
+    const branchBottomSheet = document.getElementById('branchBottomSheet');
+    const bottomSheetContent = document.getElementById('bottomSheetContent');
+    const closeBranchSheet = document.getElementById('closeBranchSheet');
+    const branchOptions = document.querySelectorAll('.branch-option');
+    const selectedBranchText = document.getElementById('selectedBranchText');
+    const joinUsLink = document.getElementById('joinUsLink');
+    const loginTitle = document.getElementById('loginTitle');
+    const loginSubtitle = document.getElementById('loginSubtitle');
+    const nameField = document.getElementById('nameField');
+    const phoneField = document.getElementById('phoneField');
+    const branchField = document.getElementById('branchField');
+    const emailLabel = document.getElementById('emailLabel');
+    let toastTimeout;
+
+    let selectedShopId = null;
+    let selectedShopName = null;
+    let isAdmin = false;
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            // الانتقال إلى صفحة لوحة التحكم بعد تسجيل الدخول
+            window.location.href = 'shop-dashboard.html';
+        }
+    });
+
+    function showToast(message, isError = false) {
+        clearTimeout(toastTimeout);
+        toastNotification.textContent = message;
+        toastNotification.className = `toast fixed bottom-5 left-1/2 -translate-x-1/2 text-white px-4 py-2 rounded-lg shadow-lg z-[80] ${isError ? 'bg-red-600' : 'bg-gray-800'}`;
+        toastNotification.classList.add('show');
+        toastTimeout = setTimeout(() => { toastNotification.classList.remove('show'); }, 3000);
+    }
+
+    function setLoading(isLoading) {
+        btnText.classList.toggle('hidden', isLoading);
+        btnSpinner.classList.toggle('hidden', !isLoading);
+        submitBtn.disabled = isLoading;
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (isAdmin) {
+            showToast("تسجيل دخول المشرف قيد التطوير حالياً.");
+            return;
+        }
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!selectedShopId || !email || !password) {
+            showToast("الرجاء اختيار الفرع وملء جميع الحقول.", true);
+            return;
+        }
+        if (password.length < 6) {
+            showToast("يجب أن تكون كلمة المرور 6 أحرف على الأقل.", true);
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            showToast("تم تسجيل الدخول بنجاح!");
+        } catch (error) {
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+                    await db.collection('users').doc(user.uid).set({
+                        email: user.email,
+                        shopId: selectedShopId,
+                        shopName: selectedShopName,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showToast("تم إنشاء الحساب وتسجيل الدخول بنجاح!");
+                } catch (createError) {
+                    showToast(`خطأ: البريد الإلكتروني مستخدم بالفعل.`, true);
+                }
+            } else {
+                showToast(`حدث خطأ: ${error.message}`, true);
+            }
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        eyeIcon.className = type === 'password' ? 'ri-eye-line' : 'ri-eye-off-line';
+    });
+
+    function openBottomSheet() {
+        branchBottomSheet.classList.remove('hidden');
+        branchBottomSheet.classList.add('show');
+    }
+    function closeBottomSheet() {
+        bottomSheetContent.style.transform = 'translateY(100%)';
+        branchBottomSheet.classList.remove('show');
+        setTimeout(() => { branchBottomSheet.classList.add('hidden'); bottomSheetContent.style.transform = ''; }, 300);
+    }
+    branchSelector.addEventListener('click', openBottomSheet);
+    closeBranchSheet.addEventListener('click', closeBottomSheet);
+    branchBottomSheet.addEventListener('click', (e) => { if (e.target === branchBottomSheet) closeBottomSheet(); });
+
+    branchOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            selectedShopId = option.dataset.shopId;
+            selectedShopName = option.dataset.shopName;
+            selectedBranchText.textContent = option.textContent.trim();
+            selectedBranchText.classList.remove('text-gray-500');
+            selectedBranchText.classList.add('text-gray-900', 'font-semibold');
+            closeBottomSheet();
+        });
+    });
+
+    joinUsLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        isAdmin = !isAdmin;
+        nameField.classList.toggle('hidden', !isAdmin);
+        phoneField.classList.toggle('hidden', !isAdmin);
+        branchField.classList.toggle('hidden', isAdmin);
+
+        if (isAdmin) {
+            loginTitle.textContent = 'تسجيل دخول كمشرف';
+            loginSubtitle.textContent = 'لوحة تحكم المشرفين';
+            joinUsLink.textContent = 'تسجيل دخول ككاشير';
+            emailLabel.textContent = 'البريد الإلكتروني';
+            emailInput.placeholder = 'admin@example.com';
+        } else {
+            loginTitle.textContent = 'تسجيل دخول الكاشير';
+            loginSubtitle.textContent = 'لوحة تحكم الكاشير';
+            joinUsLink.textContent = 'انضم إلينا';
+            emailLabel.textContent = 'البريد الإلكتروني للمحل';
+            emailInput.placeholder = 'example@shop.com';
+        }
+    });
+});
+</script>
+</body>
+</html>
